@@ -1,61 +1,108 @@
 package web.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import web.model.Role;
 import web.model.User;
 import web.service.UserService;
 import web.service.UserServiceImpl;
 
+import java.util.Collections;
+import java.util.HashSet;
+
 @Controller
-@RequestMapping("/users")
+@RequestMapping()
 public class UserController {
     @Autowired
     UserService userServiceImpl;
-
-    @GetMapping()
+//    @GetMapping("/")
+//    public String main(Model model) {
+//        return "main";
+//    }
+//    @GetMapping("/registration")
+//    public String registration(Model model) {
+//        model.addAttribute("user", new User());
+//        return "registration";
+//    }
+//    @PostMapping("/registration")
+//    public String registrationUser(@ModelAttribute("user") User user, Model model) {
+//        if(userServiceImpl.getUserByUsername(user.getUsername()) == null){
+//            userServiceImpl.addUser(user);
+//            return "redirect:/login";
+//        } else{
+//            model.addAttribute("error","Username is already use");
+//            return "registration";
+//        }
+//    }
+    @GetMapping("/admin/users")
     public String showAll(Model model) {
         model.addAttribute("users", userServiceImpl.getAll());
         return "allusers";
     }
 
-    @GetMapping("/{id}")
-    public String showById(@PathVariable("id") long id, Model model) {
+    @GetMapping("/admin/user/{id}")
+    public String showUsersById(@PathVariable("id") long id, Model model) {
         model.addAttribute("user", userServiceImpl.getUser(id));
         return "oneuser";
     }
+    @GetMapping("/user")
+    public String showUserById(Model model) {
+        String name = SecurityContextHolder.getContext().getAuthentication().getName();
+        model.addAttribute("user", userServiceImpl.getUserByUsername(name));
+        return "oneuser";
+    }
+    @GetMapping("/default")
+    public String redirectToUserID() {
+        return "redirect:/user";
+    }
 
-
-    @GetMapping("/adduser")
+    @GetMapping("/admin/users/adduser")
     public String addUser(Model model) {
         model.addAttribute("user", new User());
         return "adduser";
     }
 
-    @PostMapping()
-    public String create(@ModelAttribute("user") User user) {
+
+    @PostMapping("/admin/users")
+    public String create(@ModelAttribute("user") User user, @ModelAttribute("userRole") String userRole,
+                         @ModelAttribute("adminRole") String adminRole) {
+        user.setRoles(new HashSet<>());
+        if (userRole.equals("on")){
+            user.getRoles().add(new Role(1L, "ROLE_USER"));
+        }
+        if (adminRole.equals("on")){
+            user.getRoles().add(new Role(2L, "ROLE_ADMIN"));
+        }
         userServiceImpl.addUser(user);
-        return "redirect:/users";
+        return "redirect:/admin/users";
 
     }
 
-    @GetMapping("/{id}/edit")
+    @GetMapping("/admin/users/{id}/edit")
     public String editUser(Model model, @PathVariable("id") long id) {
         model.addAttribute("user", userServiceImpl.getUser(id));
         return "updateuser";
     }
 
-    @PostMapping("/{id}")
+    @PostMapping("/admin/users/{id}")
     public String updateUser(@ModelAttribute("user") User user){
+        User defaultUser = userServiceImpl.getUserByUsername(user.getUsername());
+        user.setRoles(defaultUser.getRoles());
         userServiceImpl.updateUser(user);
-        return "redirect:/users";
+        System.out.println("POST MAPPING OK");
+        return "redirect:/admin/users";
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/admin/users/{id}")
     public String deleteUser(@ModelAttribute("id") Long id){
         userServiceImpl.deleteUser(id);
-        return "redirect:/users";
+        System.out.println(id);
+        return "redirect:/admin/users";
     }
 
 }
